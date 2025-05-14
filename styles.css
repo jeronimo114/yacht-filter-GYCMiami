@@ -1,19 +1,46 @@
+#draftBtn {
+  background-color: #38bdf8; /* light sky blue */
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+
+#draftBtn:hover {
+  background-color: #0ea5e9;
+}
 /* Ajustes menores: ancho de sliders de Tailwind en Safari, etc. */
 input[type="range"] {
   accent-color: #0050b3;
 }
 table th,
 table td {
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+table th {
+  background-color: #e2e8f0;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #334155;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+tr td:first-child {
+  font-weight: 700;
+  color: #0f172a;
+  background-color: #f8fafc;
+}
+
+tr:nth-child(even) {
+  background-color: #f9fafb;
 }
 
 aside {
-  background-color: #f9fafb;
+  background-color: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px rgba(0, 80, 179, 0.05);
 }
 
 aside label {
@@ -23,6 +50,67 @@ aside label {
 aside select,
 aside input[type="range"] {
   background-color: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+}
+
+body {
+  font-family: "Helvetica Neue", sans-serif;
+  background-color: #f8fbff;
+  color: #0f172a;
+}
+
+header {
+  background-color: #001f3f;
+  color: white;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2rem;
+  letter-spacing: 1px;
+}
+
+.quick-budget {
+  transition: all 0.2s ease-in-out;
+  font-weight: 500;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: transparent;
+}
+
+.quick-budget:hover {
+  transform: scale(1.05);
+  background-color: #bae6fd;
+}
+
+.quick-budget-active {
+  background-color: #0284c7;
+  color: white !important;
+}
+
+#applyBtn {
+  background-color: #0284c7;
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+
+#copyBtn {
+  border-color: #0284c7;
+  color: #0284c7;
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+
+#resetBtn {
+  background-color: #e2e8f0;
+  color: #334155;
+  font-weight: 500;
+  border-radius: 0.5rem;
+}
+
+select,
+input[type="range"] {
+  font-size: 0.95rem;
 }

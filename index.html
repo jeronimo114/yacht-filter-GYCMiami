@@ -15,8 +15,8 @@
   </head>
   <body class="bg-white text-gray-900">
     <!-- Header -->
-    <header class="p-6">
-      <h1 class="text-3xl font-semibold text-[#0050B3]">
+    <header class="p-6 bg-[#001f3f] text-white text-center">
+      <h1 class="text-3xl font-semibold tracking-wider">
         Yacht Finder (uso interno)
       </h1>
     </header>
@@ -31,13 +31,13 @@
           <input
             id="budgetRange"
             type="range"
-            class="w-full"
+            class="w-full text-sm"
             min="0"
-            max="10000"
+            max="30000"
             step="100"
-            value="10000"
+            value="30000"
           />
-          <span id="budgetLabel" class="text-sm text-gray-600">$50,000</span>
+          <span id="budgetLabel" class="text-sm text-gray-600">$30,000</span>
         </div>
 
         <!-- Tamaño -->
@@ -46,7 +46,7 @@
           <input
             id="sizeRange"
             type="range"
-            class="w-full"
+            class="w-full text-sm"
             min="20"
             max="200"
             step="5"
@@ -68,13 +68,64 @@
           </div>
         </div>
 
+        <!-- Fecha -->
+        <div>
+          <label class="font-medium block mb-1">Fecha del charter</label>
+          <input
+            id="dateInput"
+            type="date"
+            class="w-full border rounded p-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label class="font-medium block mb-1">Filtrar por valor</label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
+              data-value="1000"
+            >
+              $1,000
+            </button>
+            <button
+              type="button"
+              class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
+              data-value="2000"
+            >
+              $2,000
+            </button>
+            <button
+              type="button"
+              class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
+              data-value="3000"
+            >
+              $3,000
+            </button>
+            <button
+              type="button"
+              class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
+              data-value="5000"
+            >
+              $5,000
+            </button>
+            <button
+              type="button"
+              class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
+              data-value="10000"
+            >
+              $10,000
+            </button>
+          </div>
+        </div>
+
         <!-- Ubicación -->
         <div>
           <label for="locationSelect" class="font-medium block mb-1"
             >Ubicación</label
           >
-          <select id="locationSelect" class="w-full border rounded p-2">
-            <option value="">— Todas —</option>
+          <select id="locationSelect" class="w-full border rounded p-2 text-sm">
+            <option value="">— Ninguna —</option>
           </select>
         </div>
 
@@ -85,7 +136,7 @@
           >
           <select
             id="brandSelect"
-            class="w-full border rounded p-2"
+            class="w-full border rounded p-2 text-sm"
             multiple
             size="6"
           ></select>
@@ -98,15 +149,24 @@
         <div class="flex gap-3 pt-2">
           <button
             id="applyBtn"
-            class="flex-1 bg-[#0050B3] text-white py-2 rounded"
+            class="flex-1 bg-[#0050B3] text-white py-2 rounded font-semibold"
           >
             Aplicar filtros
           </button>
           <button
             id="copyBtn"
-            class="flex-1 border border-[#0050B3] text-[#0050B3] py-2 rounded"
+            class="flex-1 border border-[#0050B3] text-[#0050B3] py-2 rounded font-semibold"
           >
             Copiar tabla
+          </button>
+          <button id="resetBtn" class="flex-1 border py-2 rounded font-medium">
+            Limpiar filtros
+          </button>
+          <button
+            id="draftBtn"
+            class="flex-1 bg-[#38bdf8] text-white py-2 rounded font-semibold"
+          >
+            Redactar mensaje
           </button>
         </div>
       </aside>

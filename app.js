@@ -7,6 +7,11 @@ const SHEET_URL = `https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(
   SHEET_TAB
 )}`;
 
+const AVAIL_TAB = "Availability";
+const AVAIL_URL = `https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(
+  AVAIL_TAB
+)}`;
+
 const PRICE_COLS = {
   4: ["Broker_Weekday_4hr", "Broker_Weekend_4hr"],
   6: ["Broker_Weekday_6hr", "Broker_Weekend_6hr"],
@@ -18,6 +23,7 @@ const PRICE_COLS = {
    ========================================================================= */
 let yachts = []; // datos completos
 let filtered = []; // datos tras aplicar filtros
+let availabilityMap = {}; // { Yacht_ID: [ {start, end}, ... ] }
 
 /* =========================================================================
    UTILIDADES
@@ -30,6 +36,8 @@ const toNumber = (str) =>
     .replace(/,/g, "")
     .trim();
 
+const parseDate = (str) => (str ? new Date(str) : null);
+
 /* Compara tamaño + presupuesto + filtros select */
 function applyFilters() {
   const budgetMax = +$("#budgetRange").value;
@@ -40,24 +48,47 @@ function applyFilters() {
   const brands = Array.from($("#brandSelect").selectedOptions).map(
     (o) => o.value
   );
+  // const hasStaterooms = $("#hasStaterooms").checked;
 
-  filtered = yachts.filter((y) => {
-    /* 1. tamaño */
-    if (toNumber(y.Yacht_Size) > sizeMax) return false;
+  const dateStr = $("#dateInput").value;
+  const selectedDate = dateStr ? new Date(dateStr + "T00:00:00") : null;
 
-    /* 2. presupuesto: tomamos el MAYOR precio (weekend) para evitar sorpresas */
-    const priceCols = PRICE_COLS[duration];
-    const price = Math.max(...priceCols.map((col) => toNumber(y[col])));
-    if (price > budgetMax) return false;
+  filtered = yachts
+    .filter((y) => {
+      /* 1. tamaño */
+      if (toNumber(y.Yacht_Size) > sizeMax) return false;
 
-    /* 3. ubicación */
-    if (location && y.Boarding_Location !== location) return false;
+      /* 2. presupuesto (tomamos el MAYOR precio weekend/week‑day) */
+      const priceCols = PRICE_COLS[duration];
+      const price = Math.max(...priceCols.map((col) => toNumber(y[col])));
+      if (price > budgetMax) return false;
 
-    /* 4. marca */
-    if (brands.length && !brands.includes(y.Brand)) return false;
+      /* 3. ubicación */
+      if (location && y.Boarding_Location !== location) return false;
 
-    return true;
-  });
+      /* 4. marca */
+      if (brands.length && !brands.includes(y.Brand)) return false;
+
+      /* 5. disponibilidad (descartar si solapa) */
+      if (selectedDate) {
+        const bookings = availabilityMap[y.Yacht_ID] || [];
+        const overlaps = bookings.some(
+          (b) => selectedDate >= b.start && selectedDate <= b.end
+        );
+        console.log(
+          "[applyFilters] Yacht",
+          y.Yacht_ID,
+          overlaps ? "❌ overlaps — filtered out" : "✅ no overlap"
+        );
+        if (overlaps) return false;
+      } else {
+        console.log("[applyFilters] Yacht", y.Yacht_ID, "✅ date not set");
+      }
+
+      return true;
+    })
+    /* No solapamiento -> disponible */
+    .map((y) => ({ ...y, __partial: false }));
 
   renderTable();
 }
@@ -72,7 +103,7 @@ function renderTable() {
   }
 
   /* Cabeceras basadas en claves del objeto */
-  const headers = Object.keys(filtered[0]);
+  const headers = Object.keys(filtered[0]).filter((h) => !h.startsWith("__"));
   $("#tableHead").innerHTML =
     "<tr>" +
     headers.map((h) => `<th class="text-left font-medium">${h}</th>`).join("") +
@@ -81,12 +112,18 @@ function renderTable() {
   /* Filas */
   $("#tableBody").innerHTML = filtered
     .map((row) => {
+      const rowClass = row.__partial ? ' class="partially-booked"' : "";
       return (
-        "<tr>" +
+        "<tr" +
+        rowClass +
+        ">" +
         headers
           .map((h) => {
             const val = row[h] || "";
-            return `<td>${val}</td>`;
+            const isNameCol = h === "Yacht_Name";
+            return `<td${
+              isNameCol ? ' class="font-semibold text-[#0050B3]"' : ""
+            }>${val}</td>`;
           })
           .join("") +
         "</tr>"
@@ -102,7 +139,7 @@ function copyToClipboard() {
     return;
   }
 
-  const headers = Object.keys(filtered[0]);
+  const headers = Object.keys(filtered[0]).filter((h) => !h.startsWith("__"));
   let md = "| " + headers.join(" | ") + " |\n";
   md += "| " + headers.map(() => "---").join(" | ") + " |\n";
 
@@ -117,13 +154,64 @@ function copyToClipboard() {
 }
 
 /* =========================================================================
+   REDACTAR MENSAJE
+   ========================================================================= */
+function draftMessage() {
+  if (!filtered.length) {
+    alert("No hay yates para redactar.");
+    return;
+  }
+
+  const duration = +document.querySelector('input[name="duration"]:checked')
+    .value;
+
+  const priceCols = PRICE_COLS[duration];
+
+  const lines = filtered.map((y) => {
+    const priceVal = toNumber(y[priceCols[0]]) || toNumber(y[priceCols[1]]);
+    const priceStr = priceVal ? `$${priceVal.toLocaleString("en-US")}` : "N/A";
+    return `• ${y.Yacht_Size}' ${y.Yacht_Name} – ${priceStr} (${duration} h) – Marina: ${y.Boarding_Location}`;
+  });
+
+  const message =
+    "Hola 👋\n\nEstos son los yates disponibles que cumplen tus criterios:\n\n" +
+    lines.join("\n") +
+    "\n\nAvísame cuál te llama la atención para enviarte más detalles.";
+
+  navigator.clipboard
+    .writeText(message)
+    .then(() =>
+      alert(
+        "Mensaje redactado y copiado al portapapeles. ¡Pégalo donde lo necesites!"
+      )
+    )
+    .catch((err) => alert("No se pudo copiar el mensaje: " + err));
+}
+
+/* =========================================================================
    INICIALIZACIÓN
    ========================================================================= */
 async function init() {
   try {
     console.log("Consultando archivo:", SHEET_URL);
-    const res = await fetch(SHEET_URL);
-    yachts = await res.json();
+    const [resYachts, resAvail] = await Promise.all([
+      fetch(SHEET_URL),
+      fetch(AVAIL_URL),
+    ]);
+    yachts = await resYachts.json();
+    const availRows = await resAvail.json();
+
+    // Build availability map
+    availabilityMap = {};
+    availRows.forEach((r) => {
+      const id = r.Yacht_ID;
+      if (!id) return;
+      const start = parseDate(r["Reservation Start Date and time"]);
+      const end = parseDate(r["Reservation End Date and time"]);
+      if (!start || !end) return;
+      if (!availabilityMap[id]) availabilityMap[id] = [];
+      availabilityMap[id].push({ start, end });
+    });
 
     /* Limpia números y normaliza miles una vez */
     yachts.forEach((y) => {
@@ -163,6 +251,7 @@ function populateFilters() {
 
   // Futuro: agregar filtro por capacidad (requiere campo nuevo en CSV)
   // Futuro: agregar checkbox "con camarotes", "con fotos", "con video"
+  // Futuro: Filtro por media (tiene fotos/video), popularidad, o tags personalizados
 }
 
 /* =========================================================================
@@ -177,6 +266,38 @@ $("#sizeRange").addEventListener("input", (e) => {
 
 $("#applyBtn").addEventListener("click", applyFilters);
 $("#copyBtn").addEventListener("click", copyToClipboard);
+$("#draftBtn").addEventListener("click", draftMessage);
+
+document.querySelectorAll(".quick-budget").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const val = btn.getAttribute("data-value");
+    $("#budgetRange").value = val;
+    $("#budgetLabel").textContent = `$${(+val).toLocaleString()}`;
+    applyFilters();
+
+    document
+      .querySelectorAll(".quick-budget")
+      .forEach((b) => b.classList.remove("quick-budget-active"));
+    btn.classList.add("quick-budget-active");
+  });
+});
+
+$("#dateInput").addEventListener("change", applyFilters);
+
+$("#resetBtn").addEventListener("click", () => {
+  $("#budgetRange").value = 30000;
+  $("#budgetLabel").textContent = "$30,000";
+  $("#sizeRange").value = 200;
+  $("#sizeLabel").textContent = "200 ft";
+  document.querySelector('input[name="duration"][value="4"]').checked = true;
+  $("#locationSelect").value = "";
+  $("#brandSelect").selectedIndex = -1;
+  $("#dateInput").value = "";
+  document
+    .querySelectorAll(".quick-budget")
+    .forEach((b) => b.classList.remove("quick-budget-active"));
+  applyFilters();
+});
 
 /* ------------------------------------------------------------------------- */
 init();
