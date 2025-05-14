@@ -53,42 +53,56 @@ function applyFilters() {
   const dateStr = $("#dateInput").value;
   const selectedDate = dateStr ? new Date(dateStr + "T00:00:00") : null;
 
-  filtered = yachts
-    .filter((y) => {
-      /* 1. tamaño */
-      if (toNumber(y.Yacht_Size) > sizeMax) return false;
+  /* -----------------------------------------------------------
+     Paso 1 — filtros básicos (tamaño, precio, ubicación, marca)
+     ----------------------------------------------------------- */
+  filtered = yachts.filter((y) => {
+    /* 1. tamaño */
+    if (toNumber(y.Yacht_Size) > sizeMax) return false;
 
-      /* 2. presupuesto (tomamos el MAYOR precio weekend/week‑day) */
-      const priceCols = PRICE_COLS[duration];
-      const price = Math.max(...priceCols.map((col) => toNumber(y[col])));
-      if (price > budgetMax) return false;
+    /* 2. presupuesto (máximo valor weekend / weekday) */
+    const priceCols = PRICE_COLS[duration];
+    const price = Math.max(...priceCols.map((col) => toNumber(y[col])));
+    if (price > budgetMax) return false;
 
-      /* 3. ubicación */
-      if (location && y.Boarding_Location !== location) return false;
+    /* 3. ubicación */
+    if (location && y.Boarding_Location !== location) return false;
 
-      /* 4. marca */
-      if (brands.length && !brands.includes(y.Brand)) return false;
+    /* 4. marca */
+    if (brands.length && !brands.includes(y.Brand)) return false;
 
-      /* 5. disponibilidad (descartar si solapa) */
-      if (selectedDate) {
-        const bookings = availabilityMap[y.Yacht_ID] || [];
-        const overlaps = bookings.some(
-          (b) => selectedDate >= b.start && selectedDate <= b.end
-        );
-        console.log(
-          "[applyFilters] Yacht",
-          y.Yacht_ID,
-          overlaps ? "❌ overlaps — filtered out" : "✅ no overlap"
-        );
-        if (overlaps) return false;
-      } else {
-        console.log("[applyFilters] Yacht", y.Yacht_ID, "✅ date not set");
-      }
+    return true;
+  });
 
-      return true;
-    })
-    /* No solapamiento -> disponible */
-    .map((y) => ({ ...y, __partial: false }));
+  /* -----------------------------------------------------------
+     Paso 2 — evaluar disponibilidad y crear campo Status
+     ----------------------------------------------------------- */
+  filtered = filtered.map((y) => {
+    let isBooked = false;
+    let statusLabel = "—"; // sin fecha
+
+    if (selectedDate) {
+      const bookings = availabilityMap[y.Yacht_ID] || [];
+      isBooked = bookings.some(
+        (b) => selectedDate >= b.start && selectedDate <= b.end
+      );
+      statusLabel = isBooked ? "Booked" : "Available";
+    }
+
+    console.log(
+      "[applyFilters] Yacht",
+      y.Yacht_ID,
+      "status:",
+      statusLabel,
+      isBooked ? "❌" : "✅"
+    );
+
+    return {
+      ...y,
+      Status: statusLabel,
+      __booked: isBooked, // flag interno para estilos
+    };
+  });
 
   renderTable();
 }
@@ -112,7 +126,7 @@ function renderTable() {
   /* Filas */
   $("#tableBody").innerHTML = filtered
     .map((row) => {
-      const rowClass = row.__partial ? ' class="partially-booked"' : "";
+      const rowClass = row.__booked ? ' class="booked"' : "";
       return (
         "<tr" +
         rowClass +
@@ -121,8 +135,16 @@ function renderTable() {
           .map((h) => {
             const val = row[h] || "";
             const isNameCol = h === "Yacht_Name";
+            const isStatusCol = h === "Status";
+            const extraClass = isNameCol
+              ? "font-semibold text-[#0050B3]"
+              : isStatusCol
+              ? row.__booked
+                ? "booked-badge"
+                : "available-badge"
+              : "";
             return `<td${
-              isNameCol ? ' class="font-semibold text-[#0050B3]"' : ""
+              extraClass ? ` class="${extraClass}"` : ""
             }>${val}</td>`;
           })
           .join("") +
