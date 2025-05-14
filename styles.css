@@ -1,0 +1,28 @@
+/* Ajustes menores: ancho de sliders de Tailwind en Safari, etc. */
+input[type="range"] {
+  accent-color: #0050b3;
+}
+table th,
+table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+aside {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+aside label {
+  color: #1f2937;
+}
+
+aside select,
+aside input[type="range"] {
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
