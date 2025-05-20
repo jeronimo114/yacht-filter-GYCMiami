@@ -36,11 +36,42 @@ const toNumber = (str) =>
     .replace(/,/g, "")
     .trim();
 
-const parseDate = (str) => (str ? new Date(str) : null);
+const parseDate = (str) => {
+  if (!str) return null;
+  let s = String(str)
+    .trim()
+    .replace(/[‚Äô’]/g, "'");
+  // Remove trailing commas
+  s = s.replace(/,\s*$/, "");
+  // Handle "5/14/2025, 12:00:00 AM" by removing the comma
+  s = s.replace(/(\d{4})\s*,\s*/, "$1 ");
+  const d = new Date(s);
+  if (isNaN(d)) {
+    console.warn("[parseDate] Invalid:", str);
+    return null;
+  }
+  return d;
+};
+
+/* Formatea como "Mar 10, 2025 7:00 PM" (sin coma entre fecha y hora) */
+const fmtDateTime = (d) =>
+  d
+    ? new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+        .format(d)
+        .replace(",", "") // quita la coma que Intl pone tras la fecha
+    : "";
 
 /* Compara tamaño + presupuesto + filtros select */
 function applyFilters() {
   const budgetMax = +$("#budgetRange").value;
+  const sizeMin = +$("#sizeMinRange").value;
   const sizeMax = +$("#sizeRange").value;
   const duration = +document.querySelector('input[name="duration"]:checked')
     .value;
@@ -53,10 +84,24 @@ function applyFilters() {
   const dateStr = $("#dateInput").value;
   const selectedDate = dateStr ? new Date(dateStr + "T00:00:00") : null;
 
+  console.log(
+    "[applyFilters] budgetMax:",
+    budgetMax,
+    "sizeMin:",
+    sizeMin,
+    "sizeMax:",
+    sizeMax,
+    "date:",
+    selectedDate?.toDateString() || "—"
+  );
+
   /* -----------------------------------------------------------
      Paso 1 — filtros básicos (tamaño, precio, ubicación, marca)
      ----------------------------------------------------------- */
   filtered = yachts.filter((y) => {
+    /* 0. tamaño mínimo */
+    if (toNumber(y.Yacht_Size) < sizeMin) return false;
+
     /* 1. tamaño */
     if (toNumber(y.Yacht_Size) > sizeMax) return false;
 
@@ -75,32 +120,65 @@ function applyFilters() {
   });
 
   /* -----------------------------------------------------------
-     Paso 2 — evaluar disponibilidad y crear campo Status
+     Paso 2 — evaluar disponibilidad y crear campo Status + reservas
      ----------------------------------------------------------- */
   filtered = filtered.map((y) => {
+    /* ------------------------------------------------------------------
+       Determinar estado de disponibilidad + reservas vinculadas
+       ------------------------------------------------------------------ */
+    const bookings = availabilityMap[y.Yacht_ID] || [];
     let isBooked = false;
     let statusLabel = "—"; // sin fecha
+    let resStartStr = "";
+    let resEndStr = "";
 
     if (selectedDate) {
-      const bookings = availabilityMap[y.Yacht_ID] || [];
-      isBooked = bookings.some(
-        (b) => selectedDate >= b.start && selectedDate <= b.end
-      );
-      statusLabel = isBooked ? "Booked" : "Available";
+      // Caso 1: el usuario seleccionó una fecha
+      const overlapping = bookings.find((b) => {
+        const selectedDay = selectedDate.toDateString();
+        const startDay = b.start.toDateString();
+        const endDay = b.end.toDateString();
+        return selectedDay >= startDay && selectedDay <= endDay;
+      });
+      if (overlapping) {
+        isBooked = true;
+        statusLabel = "Booked";
+        resStartStr = fmtDateTime(overlapping.start);
+        resEndStr = fmtDateTime(overlapping.end);
+      } else {
+        statusLabel = "Available";
+        resStartStr = "";
+        resEndStr = "";
+      }
+    } else if (bookings.length) {
+      // Caso 2: sin fecha ➜ mostrar próxima reserva futura
+      const today = new Date();
+      const future = bookings
+        .filter((b) => b.start >= today)
+        .sort((a, b) => a.start - b.start)[0];
+      if (future) {
+        resStartStr = fmtDateTime(future.start);
+        resEndStr = fmtDateTime(future.end);
+      }
     }
 
     console.log(
-      "[applyFilters] Yacht",
+      "[map] Yacht",
       y.Yacht_ID,
-      "status:",
+      "| status:",
       statusLabel,
-      isBooked ? "❌" : "✅"
+      "| start:",
+      resStartStr,
+      "| end:",
+      resEndStr
     );
 
     return {
       ...y,
+      "Reservation Start Date and time": resStartStr,
+      "Reservation End Date and time": resEndStr,
       Status: statusLabel,
-      __booked: isBooked, // flag interno para estilos
+      __booked: isBooked,
     };
   });
 
@@ -230,8 +308,19 @@ async function init() {
       if (!id) return;
       const start = parseDate(r["Reservation Start Date and time"]);
       const end = parseDate(r["Reservation End Date and time"]);
-      if (!start || !end) return;
+      if (!start || !end) {
+        console.warn("[skip booking] invalid date", r);
+        return;
+      }
       if (!availabilityMap[id]) availabilityMap[id] = [];
+      console.log(
+        "[init] push booking",
+        id,
+        "⮕",
+        start?.toLocaleString(),
+        "→",
+        end?.toLocaleString()
+      );
       availabilityMap[id].push({ start, end });
     });
 
@@ -281,9 +370,15 @@ function populateFilters() {
    ========================================================================= */
 $("#budgetRange").addEventListener("input", (e) => {
   $("#budgetLabel").textContent = `$${(+e.target.value).toLocaleString()}`;
+  document
+    .querySelectorAll(".quick-budget")
+    .forEach((b) => b.classList.remove("quick-budget-active"));
 });
 $("#sizeRange").addEventListener("input", (e) => {
   $("#sizeLabel").textContent = `${e.target.value} ft`;
+});
+$("#sizeMinRange").addEventListener("input", (e) => {
+  $("#sizeMinLabel").textContent = `${e.target.value} ft`;
 });
 
 $("#applyBtn").addEventListener("click", applyFilters);
@@ -311,6 +406,8 @@ $("#resetBtn").addEventListener("click", () => {
   $("#budgetLabel").textContent = "$30,000";
   $("#sizeRange").value = 200;
   $("#sizeLabel").textContent = "200 ft";
+  $("#sizeMinRange").value = 20;
+  $("#sizeMinLabel").textContent = "20 ft";
   document.querySelector('input[name="duration"][value="4"]').checked = true;
   $("#locationSelect").value = "";
   $("#brandSelect").selectedIndex = -1;
