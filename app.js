@@ -37,14 +37,16 @@ const toNumber = (str) =>
     .trim();
 
 const parseDate = (str) => {
-  if (!str) return null;
-  let s = String(str)
+  if (!str || typeof str !== "string") return null;
+
+  let s = str
     .trim()
-    .replace(/[‚Äô’]/g, "'");
-  // Remove trailing commas
-  s = s.replace(/,\s*$/, "");
-  // Handle "5/14/2025, 12:00:00 AM" by removing the comma
-  s = s.replace(/(\d{4})\s*,\s*/, "$1 ");
+    .replace(/[‚Äô’]/g, "'") // caracteres de comillas especiales
+    .replace(/["']/g, "") // comillas dobles o simples
+    .replace(/,\s*$/, "") // comas finales
+    .replace(/\s+/g, " ") // espacios dobles
+    .replace(/(\d{4})\s*,\s*/, "$1 "); // "2025, " -> "2025 "
+
   const d = new Date(s);
   if (isNaN(d)) {
     console.warn("[parseDate] Invalid:", str);
@@ -52,6 +54,12 @@ const parseDate = (str) => {
   }
   return d;
 };
+
+/* ── helpers de fecha: trabajar siempre a nivel de día ───────────── */
+const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const sameDay = (a, b) => a.getTime() === b.getTime();
+const isInside = (sel, start, end) =>
+  sel.getTime() >= start.getTime() && sel.getTime() <= end.getTime();
 
 /* Formatea como "Mar 10, 2025 7:00 PM" (sin coma entre fecha y hora) */
 const fmtDateTime = (d) =>
@@ -129,26 +137,39 @@ function applyFilters() {
     const bookings = availabilityMap[y.Yacht_ID] || [];
     let isBooked = false;
     let statusLabel = "—"; // sin fecha
+    let isPartiallyBooked = false;
     let resStartStr = "";
     let resEndStr = "";
 
     if (selectedDate) {
-      // Caso 1: el usuario seleccionó una fecha
-      const overlapping = bookings.find((b) => {
-        const selectedDay = selectedDate.toDateString();
-        const startDay = b.start.toDateString();
-        const endDay = b.end.toDateString();
-        return selectedDay >= startDay && selectedDay <= endDay;
-      });
+      // ======================= filtro por fecha =======================
+      const selMid = midnight(selectedDate);
+
+      // Reserva que cubre completamente el día
+      const overlapping = bookings.find((b) =>
+        isInside(selMid, midnight(b.start), midnight(b.end))
+      );
+
       if (overlapping) {
         isBooked = true;
         statusLabel = "Booked";
         resStartStr = fmtDateTime(overlapping.start);
         resEndStr = fmtDateTime(overlapping.end);
       } else {
-        statusLabel = "Available";
-        resStartStr = "";
-        resEndStr = "";
+        // Reserva que empieza o termina justo ese día
+        const partial = bookings.find(
+          (b) =>
+            sameDay(selMid, midnight(b.start)) ||
+            sameDay(selMid, midnight(b.end))
+        );
+        if (partial) {
+          statusLabel = "Partially Booked";
+          isPartiallyBooked = true;
+          resStartStr = fmtDateTime(partial.start);
+          resEndStr = fmtDateTime(partial.end);
+        } else {
+          statusLabel = "Available";
+        }
       }
     } else if (bookings.length) {
       // Caso 2: sin fecha ➜ mostrar próxima reserva futura
@@ -162,16 +183,11 @@ function applyFilters() {
       }
     }
 
-    console.log(
-      "[map] Yacht",
-      y.Yacht_ID,
-      "| status:",
-      statusLabel,
-      "| start:",
-      resStartStr,
-      "| end:",
-      resEndStr
-    );
+    if (statusLabel !== "Available") {
+      console.info(
+        `[status] ${y.Yacht_Name} (${y.Yacht_ID}) – ${statusLabel}: ${resStartStr} → ${resEndStr}`
+      );
+    }
 
     return {
       ...y,
@@ -179,8 +195,11 @@ function applyFilters() {
       "Reservation End Date and time": resEndStr,
       Status: statusLabel,
       __booked: isBooked,
+      __partiallyBooked: isPartiallyBooked,
     };
   });
+
+  console.log(`[summary] ${filtered.length} yachts after applying filters.`);
 
   renderTable();
 }
@@ -204,7 +223,11 @@ function renderTable() {
   /* Filas */
   $("#tableBody").innerHTML = filtered
     .map((row) => {
-      const rowClass = row.__booked ? ' class="booked"' : "";
+      const rowClass = row.__booked
+        ? ' class="booked"'
+        : row.__partiallyBooked
+        ? ' class="partially-booked"'
+        : "";
       return (
         "<tr" +
         rowClass +
@@ -219,6 +242,8 @@ function renderTable() {
               : isStatusCol
               ? row.__booked
                 ? "booked-badge"
+                : row.__partiallyBooked
+                ? "partially-badge"
                 : "available-badge"
               : "";
             return `<td${
@@ -306,21 +331,29 @@ async function init() {
     availRows.forEach((r) => {
       const id = r.Yacht_ID;
       if (!id) return;
-      const start = parseDate(r["Reservation Start Date and time"]);
-      const end = parseDate(r["Reservation End Date and time"]);
+      const startRaw = r["Reservation Start Date and time"];
+      const endRaw = r["Reservation End Date and time"];
+      if (!startRaw || !endRaw) {
+        if (r.Yacht_ID || r.ID || r.Description) {
+          console.warn(
+            `[skip booking] missing start/end – Yacht_ID: ${
+              r.Yacht_ID || "?"
+            }, ID: ${r.ID || "?"}, Desc: ${r.Description || "?"}`
+          );
+        }
+        return;
+      }
+      const start = parseDate(startRaw);
+      const end = parseDate(endRaw);
       if (!start || !end) {
-        console.warn("[skip booking] invalid date", r);
+        console.warn(
+          `[skip booking] invalid date – Yacht_ID: ${
+            r.Yacht_ID || "?"
+          }, Start: ${startRaw}, End: ${endRaw}`
+        );
         return;
       }
       if (!availabilityMap[id]) availabilityMap[id] = [];
-      console.log(
-        "[init] push booking",
-        id,
-        "⮕",
-        start?.toLocaleString(),
-        "→",
-        end?.toLocaleString()
-      );
       availabilityMap[id].push({ start, end });
     });
 
