@@ -515,7 +515,30 @@ document
 $("#copyBtn")?.addEventListener("click", copyToClipboard);
 $("#draftBtn")?.addEventListener("click", draftMessage);
 
-$("#dateInput").addEventListener("change", applyFilters);
+/* Date selector – auto-toggle Weekday / Weekend */
+$("#dateInput")?.addEventListener("change", function () {
+  const dateStr = this.value;
+  if (dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6; // Sun = 0, Sat = 6
+    const dayVal = isWeekend ? "Weekend" : "Weekday";
+
+    const targetRadio = document.querySelector(
+      `.chip input[name='daytype'][value='${dayVal}']`
+    );
+    if (targetRadio && !targetRadio.checked) {
+      targetRadio.checked = true;
+
+      /* refrescar clases visuales */
+      document
+        .querySelectorAll("label.chip input[name='daytype']")
+        .forEach((inp) =>
+          inp.parentElement.classList.toggle("chip-active", inp.checked)
+        );
+    }
+  }
+  applyFilters();
+});
 
 $("#resetBtn").addEventListener("click", () => {
   if (minRangeEl) minRangeEl.value = "";
