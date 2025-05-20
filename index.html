@@ -64,6 +64,11 @@
         color: #16a34a !important; /* ensure green even inside booked rows */
         font-weight: 700;
       }
+      /* Show modal when .show is present */
+      #draftModal.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
     </style>
   </head>
   <body class="min-h-screen flex flex-col bg-slate-50 text-gray-900">
@@ -304,7 +309,29 @@
         </table>
       </section>
     </div>
-
+    <!-- Draft modal (hidden by default) -->
+    <div
+      id="draftModal"
+      class="fixed inset-0 bg-black/40 backdrop-blur flex items-center justify-center z-50 opacity-0 pointer-events-none transition"
+    >
+      <div
+        class="bg-white max-w-lg w-11/12 md:w-2/3 rounded-lg shadow-lg p-6 space-y-4"
+      >
+        <h2 class="text-lg font-semibold">Draft copied ✔️</h2>
+        <pre
+          id="draftContent"
+          class="whitespace-pre-wrap text-sm max-h-64 overflow-y-auto border border-gray-200 rounded p-3 bg-gray-50"
+        ></pre>
+        <div class="text-right">
+          <button
+            id="closeDraft"
+            class="px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700 transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- Toast -->
     <div
       id="resultsToast"

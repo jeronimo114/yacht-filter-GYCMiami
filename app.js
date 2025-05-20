@@ -334,34 +334,44 @@ function copyToClipboard() {
    ========================================================================= */
 function draftMessage() {
   if (!filtered.length) {
-    alert("No hay yates para redactar.");
+    alert("No yachts to include in the draft.");
     return;
   }
 
   const duration = +document.querySelector('input[name="duration"]:checked')
     .value;
+  const dayType = document.querySelector('input[name="daytype"]:checked').value;
 
-  const priceCols = PRICE_COLS[duration];
+  const dateStr = $("#dateInput").value;
+  const selectedDate = dateStr ? new Date(dateStr + "T00:00:00") : null;
+
+  const header = selectedDate
+    ? `Request for ${selectedDate.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      })} — ${duration}h — ${dayType}\n`
+    : `Request — ${duration}h — ${dayType}\n`;
 
   const lines = filtered.map((y) => {
-    const priceVal = toNumber(y[priceCols[0]]) || toNumber(y[priceCols[1]]);
-    const priceStr = priceVal ? `$${priceVal.toLocaleString("en-US")}` : "N/A";
-    return `• ${y.Yacht_Size}' ${y.Yacht_Name} – ${priceStr} (${duration} h) – Marina: ${y.Boarding_Location}`;
+    const price = y[y.__selectedPriceCol] || "N/A";
+    return `• ${y.Yacht_Size}' ${y.Yacht_Name} – ${price} – Marina: ${y.Boarding_Location}`;
   });
 
-  const message =
-    "Hola 👋\n\nEstos son los yates disponibles que cumplen tus criterios:\n\n" +
-    lines.join("\n") +
-    "\n\nAvísame cuál te llama la atención para enviarte más detalles.";
+  const message = header + "\n" + lines.join("\n");
 
   navigator.clipboard
     .writeText(message)
-    .then(() =>
-      alert(
-        "Mensaje redactado y copiado al portapapeles. ¡Pégalo donde lo necesites!"
-      )
-    )
-    .catch((err) => alert("No se pudo copiar el mensaje: " + err));
+    .then(() => {
+      const modal = $("#draftModal");
+      const content = $("#draftContent");
+      if (modal && content) {
+        content.textContent = message;
+        modal.classList.add("show");
+      }
+    })
+    .catch((err) => alert("Clipboard error: " + err));
 }
 
 /* =========================================================================
@@ -535,4 +545,8 @@ $("#resetBtn").addEventListener("click", () => {
 });
 
 /* ------------------------------------------------------------------------- */
+/* Close draft modal */
+$("#closeDraft")?.addEventListener("click", () =>
+  $("#draftModal")?.classList.remove("show")
+);
 init();
