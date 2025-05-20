@@ -94,8 +94,8 @@ function applyFilters() {
   const budgetMin = +($("#budgetMinRange")?.value || 0);
   const budgetMax = +($("#budgetMaxRange")?.value || Infinity);
 
-  const sizeMin = +$("#sizeMinRange").value;
-  const sizeMax = +$("#sizeRange").value;
+  const sizeMin = +($("#sizeMinRange")?.value || 0);
+  const sizeMax = +($("#sizeRange")?.value || Infinity);
   const duration = +document.querySelector('input[name="duration"]:checked')
     .value;
   const location = $("#locationSelect").value;
