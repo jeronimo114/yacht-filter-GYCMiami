@@ -59,6 +59,11 @@
         border-color: #0284c7;
         color: #fff;
       }
+      /* price column highlight */
+      .price-highlight {
+        color: #16a34a !important; /* ensure green even inside booked rows */
+        font-weight: 700;
+      }
     </style>
   </head>
   <body class="min-h-screen flex flex-col bg-slate-50 text-gray-900">
@@ -204,6 +209,30 @@
                 name="duration"
                 value="8"
               />8&nbsp;h</label
+            >
+          </div>
+        </div>
+
+        <!-- Day Type (Weekday / Weekend) -->
+        <div class="space-y-2">
+          <h3 class="font-medium text-sm text-gray-600">Day&nbsp;Type</h3>
+          <div class="flex gap-2">
+            <label class="chip"
+              ><input
+                hidden
+                type="radio"
+                name="daytype"
+                value="Weekday"
+                checked
+              />Weekday</label
+            >
+            <label class="chip"
+              ><input
+                hidden
+                type="radio"
+                name="daytype"
+                value="Weekend"
+              />Weekend</label
             >
           </div>
         </div>

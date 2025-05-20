@@ -67,6 +67,13 @@ const parseDate = (str) => {
   return d;
 };
 
+/* Convierte claves CON_GUIONES a formato legible "Con Guiones" */
+const prettifyHeader = (key) =>
+  key
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
 /* ── helpers de fecha: trabajar siempre a nivel de día ───────────── */
 const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const sameDay = (a, b) => a.getTime() === b.getTime();
@@ -98,6 +105,7 @@ function applyFilters() {
   const sizeMax = +($("#sizeRange")?.value || Infinity);
   const duration = +document.querySelector('input[name="duration"]:checked')
     .value;
+  const dayType = document.querySelector('input[name="daytype"]:checked').value; // "Weekday" | "Weekend"
   const location = $("#locationSelect").value;
 
   const dateStr = $("#dateInput").value;
@@ -124,10 +132,13 @@ function applyFilters() {
     /* 1. tamaño */
     if (toNumber(y.Yacht_Size) > sizeMax) return false;
 
-    /* 2. presupuesto (mínimo y máximo valor weekend / weekday) */
+    /* 2. presupuesto (único valor para duration + daytype) */
     const priceCols = PRICE_COLS[duration];
-    const price = Math.max(...priceCols.map((col) => toNumber(y[col])));
+    const priceCol = dayType === "Weekend" ? priceCols[1] : priceCols[0];
+    const price = toNumber(y[priceCol]);
     if (price < budgetMin || price > budgetMax) return false;
+    // Keep reference so we can easily show it later
+    y.__selectedPriceCol = priceCol;
 
     /* 3. ubicación */
     if (location && y.Boarding_Location !== location) return false;
@@ -230,10 +241,31 @@ function renderTable() {
   }
 
   /* Cabeceras basadas en claves del objeto */
-  const headers = Object.keys(filtered[0]).filter((h) => !h.startsWith("__"));
+  const baseHeaders = Object.keys(filtered[0]).filter(
+    (h) => !h.startsWith("__")
+  );
+
+  // Mantener solo la columna de precio elegida y moverla al frente
+  const allowedPrice = filtered[0].__selectedPriceCol;
+  const headers = [
+    allowedPrice, // first
+    ...baseHeaders.filter(
+      (h) =>
+        h !== allowedPrice && // no repetir precio
+        !h.startsWith("Broker_") // descartar otros precios
+    ),
+  ];
+
   $("#tableHead").innerHTML =
     "<tr>" +
-    headers.map((h) => `<th class="text-left font-medium">${h}</th>`).join("") +
+    headers
+      .map(
+        (h) =>
+          `<th class="text-left font-medium ${
+            h === allowedPrice ? "price-highlight" : ""
+          }">${prettifyHeader(h)}</th>`
+      )
+      .join("") +
     "</tr>";
 
   /* Filas */
@@ -253,6 +285,7 @@ function renderTable() {
             const val = row[h] || "";
             const isNameCol = h === "Yacht_Name";
             const isStatusCol = h === "Status";
+            const isPriceCol = h === allowedPrice;
             const extraClass = isNameCol
               ? "font-semibold text-[#0050B3]"
               : isStatusCol
@@ -261,6 +294,8 @@ function renderTable() {
                 : row.__partiallyBooked
                 ? "partially-badge"
                 : "available-badge"
+              : isPriceCol
+              ? "price-highlight"
               : "";
             return `<td${
               extraClass ? ` class="${extraClass}"` : ""
@@ -453,6 +488,20 @@ document
   .querySelector(".chip input:checked")
   ?.parentElement.classList.add("chip-active");
 
+/* Day‑type chip styling */
+document.querySelectorAll(".chip input[name='daytype']").forEach((radio) => {
+  radio.addEventListener("change", () => {
+    document
+      .querySelectorAll("label.chip input[name='daytype']")
+      .forEach((inp) => inp.parentElement.classList.remove("chip-active"));
+    radio.parentElement.classList.add("chip-active");
+    applyFilters();
+  });
+});
+document
+  .querySelector(".chip input[name='daytype']:checked")
+  ?.parentElement.classList.add("chip-active");
+
 $("#copyBtn")?.addEventListener("click", copyToClipboard);
 $("#draftBtn")?.addEventListener("click", draftMessage);
 
@@ -469,6 +518,16 @@ $("#resetBtn").addEventListener("click", () => {
     .forEach((c) => c.classList.remove("chip-active"));
   document
     .querySelector(".chip input[value='4']")
+    .parentElement.classList.add("chip-active");
+  // Reset daytype chips
+  document.querySelector(
+    ".chip input[name='daytype'][value='Weekday']"
+  ).checked = true;
+  document
+    .querySelectorAll("label.chip input[name='daytype']")
+    .forEach((inp) => inp.parentElement.classList.remove("chip-active"));
+  document
+    .querySelector(".chip input[name='daytype'][value='Weekday']")
     .parentElement.classList.add("chip-active");
   $("#locationSelect").value = "";
   $("#dateInput").value = "";
