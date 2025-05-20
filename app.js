@@ -332,19 +332,28 @@ function copyToClipboard() {
 /* =========================================================================
    REDACTAR MENSAJE
    ========================================================================= */
+/* =========================================================================
+   REDACTAR MENSAJE
+   ========================================================================= */
 function draftMessage() {
-  if (!filtered.length) {
-    alert("No yachts to include in the draft.");
+  /* Solo incluir yates disponibles (ni Booked ni Partially Booked) */
+  const available = filtered.filter((y) => !y.__booked && !y.__partiallyBooked);
+
+  if (!available.length) {
+    alert("No available yachts to include in the draft.");
     return;
   }
 
+  /* Contexto actual de filtros */
   const duration = +document.querySelector('input[name="duration"]:checked')
     .value;
   const dayType = document.querySelector('input[name="daytype"]:checked').value;
 
+  /* Fecha (opcional) */
   const dateStr = $("#dateInput").value;
   const selectedDate = dateStr ? new Date(dateStr + "T00:00:00") : null;
 
+  /* Encabezado */
   const header = selectedDate
     ? `Request for ${selectedDate.toLocaleDateString("en-US", {
         weekday: "short",
@@ -354,13 +363,15 @@ function draftMessage() {
       })} — ${duration}h — ${dayType}\n`
     : `Request — ${duration}h — ${dayType}\n`;
 
-  const lines = filtered.map((y) => {
+  /* Líneas con viñetas */
+  const lines = available.map((y) => {
     const price = y[y.__selectedPriceCol] || "N/A";
     return `• ${y.Yacht_Size}' ${y.Yacht_Name} – ${price} – Marina: ${y.Boarding_Location}`;
   });
 
   const message = header + "\n" + lines.join("\n");
 
+  /* Copiar al portapapeles y mostrar modal */
   navigator.clipboard
     .writeText(message)
     .then(() => {
