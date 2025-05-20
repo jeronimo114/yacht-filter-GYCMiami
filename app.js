@@ -30,6 +30,15 @@ let availabilityMap = {}; // { Yacht_ID: [ {start, end}, ... ] }
    ========================================================================= */
 const $ = (sel) => document.querySelector(sel);
 
+/* Sincroniza la clase .chip-active de un grupo (duration | daytype) */
+function updateChipActive(groupName) {
+  document
+    .querySelectorAll(`.chip input[name='${groupName}']`)
+    .forEach((inp) =>
+      inp.parentElement.classList.toggle("chip-active", inp.checked)
+    );
+}
+
 /* Simple toast utility */
 function showToast(message) {
   const toast = $("#resultsToast");
@@ -494,34 +503,16 @@ if (maxRangeEl)
 $("#sizeRange")?.addEventListener("input", _.debounce(applyFilters, 150));
 $("#sizeMinRange")?.addEventListener("input", _.debounce(applyFilters, 150));
 
-/* Duration chip styling */
-document.querySelectorAll(".chip input[name='duration']").forEach((radio) => {
+/* Duration chips */
+document.querySelectorAll(".chip input[name='duration']").forEach((radio) =>
   radio.addEventListener("change", () => {
-    document
-      .querySelectorAll(".chip")
-      .forEach((c) => c.classList.remove("chip-active"));
-    radio.parentElement.classList.add("chip-active");
+    updateChipActive("duration");
     applyFilters();
-  });
-});
-/* Activate default on load */
-document
-  .querySelector(".chip input:checked")
-  ?.parentElement.classList.add("chip-active");
-
-/* Day‑type chip styling */
-document.querySelectorAll(".chip input[name='daytype']").forEach((radio) => {
-  radio.addEventListener("change", () => {
-    document
-      .querySelectorAll("label.chip input[name='daytype']")
-      .forEach((inp) => inp.parentElement.classList.remove("chip-active"));
-    radio.parentElement.classList.add("chip-active");
-    applyFilters();
-  });
-});
-document
-  .querySelector(".chip input[name='daytype']:checked")
-  ?.parentElement.classList.add("chip-active");
+  })
+);
+// Initial visual state
+updateChipActive("duration");
+updateChipActive("daytype");
 
 $("#copyBtn")?.addEventListener("click", copyToClipboard);
 $("#draftBtn")?.addEventListener("click", draftMessage);
@@ -529,37 +520,38 @@ $("#draftBtn")?.addEventListener("click", draftMessage);
 /* Date selector – auto-toggle Weekday / Weekend */
 $("#dateInput")?.addEventListener("change", function () {
   const dateStr = this.value;
-  if (dateStr) {
-    const d = new Date(dateStr + "T00:00:00");
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6; // Sun = 0, Sat = 6
-    const dayVal = isWeekend ? "Weekend" : "Weekday";
-
-    const targetRadio = document.querySelector(
-      `.chip input[name='daytype'][value='${dayVal}']`
-    );
-    if (targetRadio && !targetRadio.checked) {
-      targetRadio.checked = true;
-
-      /* refrescar clases visuales */
-      document
-        .querySelectorAll("label.chip input[name='daytype']")
-        .forEach((inp) =>
-          inp.parentElement.classList.toggle("chip-active", inp.checked)
-        );
-    }
+  if (!dateStr) {
+    applyFilters();
+    return;
   }
+  const d = new Date(dateStr + "T00:00:00");
+  const isWeekend = d.getDay() === 0 || d.getDay() === 6; // Sunday=0
+  const val = isWeekend ? "Weekend" : "Weekday";
+  const radio = document.querySelector(
+    `.chip input[name='daytype'][value='${val}']`
+  );
+  if (radio && !radio.checked) {
+    radio.checked = true;
+  }
+  updateChipActive("daytype");
   applyFilters();
 });
+
+/* Day-type chips */
+document.querySelectorAll(".chip input[name='daytype']").forEach((radio) =>
+  radio.addEventListener("change", () => {
+    updateChipActive("daytype");
+    applyFilters();
+  })
+);
 
 $("#resetBtn").addEventListener("click", () => {
   if (minRangeEl) minRangeEl.value = "";
   if (maxRangeEl) maxRangeEl.value = "";
   $("#sizeRange").value = 200;
   $("#sizeMinRange").value = 20;
-  document.querySelector(".chip input[value='4']").checked = true;
-  document
-    .querySelectorAll(".chip")
-    .forEach((c) => c.classList.remove("chip-active"));
+  updateChipActive("duration");
+  updateChipActive("daytype");
   document
     .querySelector(".chip input[value='4']")
     .parentElement.classList.add("chip-active");
