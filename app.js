@@ -78,16 +78,17 @@ const fmtDateTime = (d) =>
 
 /* Compara tamaño + presupuesto + filtros select */
 function applyFilters() {
-  const budgetMax = +$("#budgetRange").value;
+  /* Presupuesto min–max (si los sliders existen) */
+  const budgetMin = $("#budgetMinRange") ? +$("#budgetMinRange").value : 0;
+  const budgetMax = $("#budgetMaxRange")
+    ? +$("#budgetMaxRange").value
+    : +$("#budgetRange")?.value || Infinity;
+
   const sizeMin = +$("#sizeMinRange").value;
   const sizeMax = +$("#sizeRange").value;
   const duration = +document.querySelector('input[name="duration"]:checked')
     .value;
   const location = $("#locationSelect").value;
-  const brands = Array.from($("#brandSelect").selectedOptions).map(
-    (o) => o.value
-  );
-  // const hasStaterooms = $("#hasStaterooms").checked;
 
   const dateStr = $("#dateInput").value;
   const selectedDate = dateStr ? new Date(dateStr + "T00:00:00") : null;
@@ -113,16 +114,13 @@ function applyFilters() {
     /* 1. tamaño */
     if (toNumber(y.Yacht_Size) > sizeMax) return false;
 
-    /* 2. presupuesto (máximo valor weekend / weekday) */
+    /* 2. presupuesto (mínimo y máximo valor weekend / weekday) */
     const priceCols = PRICE_COLS[duration];
     const price = Math.max(...priceCols.map((col) => toNumber(y[col])));
-    if (price > budgetMax) return false;
+    if (price < budgetMin || price > budgetMax) return false;
 
     /* 3. ubicación */
     if (location && y.Boarding_Location !== location) return false;
-
-    /* 4. marca */
-    if (brands.length && !brands.includes(y.Brand)) return false;
 
     return true;
   });
@@ -387,26 +385,31 @@ function populateFilters() {
     locations.map((l) => `<option value="${l}">${l}</option>`).join("")
   );
 
-  /* Marcas únicas */
-  const brands = _.uniq(yachts.map((y) => y.Brand).filter(Boolean)).sort();
-  $("#brandSelect").innerHTML = brands
-    .map((b) => `<option value="${b}">${b}</option>`)
-    .join("");
-
   // Futuro: agregar filtro por capacidad (requiere campo nuevo en CSV)
   // Futuro: agregar checkbox "con camarotes", "con fotos", "con video"
-  // Futuro: Filtro por media (tiene fotos/video), popularidad, o tags personalizados
 }
 
 /* =========================================================================
    EVENTOS
    ========================================================================= */
-$("#budgetRange").addEventListener("input", (e) => {
-  $("#budgetLabel").textContent = `$${(+e.target.value).toLocaleString()}`;
-  document
-    .querySelectorAll(".quick-budget")
-    .forEach((b) => b.classList.remove("quick-budget-active"));
-});
+/* Rango de presupuesto (min‑max) */
+const minRangeEl = $("#budgetMinRange");
+const maxRangeEl = $("#budgetMaxRange");
+
+if (minRangeEl) {
+  minRangeEl.addEventListener("input", (e) => {
+    $("#budgetMinLabel").textContent = `$${(+e.target.value).toLocaleString(
+      "en-US"
+    )}`;
+  });
+}
+if (maxRangeEl) {
+  maxRangeEl.addEventListener("input", (e) => {
+    $("#budgetMaxLabel").textContent = `$${(+e.target.value).toLocaleString(
+      "en-US"
+    )}`;
+  });
+}
 $("#sizeRange").addEventListener("input", (e) => {
   $("#sizeLabel").textContent = `${e.target.value} ft`;
 });
@@ -418,36 +421,25 @@ $("#applyBtn").addEventListener("click", applyFilters);
 $("#copyBtn").addEventListener("click", copyToClipboard);
 $("#draftBtn").addEventListener("click", draftMessage);
 
-document.querySelectorAll(".quick-budget").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const val = btn.getAttribute("data-value");
-    $("#budgetRange").value = val;
-    $("#budgetLabel").textContent = `$${(+val).toLocaleString()}`;
-    applyFilters();
-
-    document
-      .querySelectorAll(".quick-budget")
-      .forEach((b) => b.classList.remove("quick-budget-active"));
-    btn.classList.add("quick-budget-active");
-  });
-});
-
 $("#dateInput").addEventListener("change", applyFilters);
 
 $("#resetBtn").addEventListener("click", () => {
-  $("#budgetRange").value = 30000;
-  $("#budgetLabel").textContent = "$30,000";
+  /* Presupuesto sliders */
+  if (minRangeEl) {
+    minRangeEl.value = 0;
+    $("#budgetMinLabel").textContent = "$0";
+  }
+  if (maxRangeEl) {
+    maxRangeEl.value = 30000;
+    $("#budgetMaxLabel").textContent = "$30,000";
+  }
   $("#sizeRange").value = 200;
   $("#sizeLabel").textContent = "200 ft";
   $("#sizeMinRange").value = 20;
   $("#sizeMinLabel").textContent = "20 ft";
   document.querySelector('input[name="duration"][value="4"]').checked = true;
   $("#locationSelect").value = "";
-  $("#brandSelect").selectedIndex = -1;
   $("#dateInput").value = "";
-  document
-    .querySelectorAll(".quick-budget")
-    .forEach((b) => b.classList.remove("quick-budget-active"));
   applyFilters();
 });
 

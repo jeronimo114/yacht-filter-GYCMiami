@@ -26,11 +26,6 @@
         color: #dc2626;
         font-weight: 600;
       }
-      .quick-budget-active {
-        background: #0050b3;
-        color: #fff;
-        transform: scale(1.05);
-      }
       .partially-booked td {
         background: #fff5cc;
       }
@@ -51,21 +46,40 @@
       <main class="px-6 grid gap-6 lg:grid-cols-4">
         <!-- Panel de filtros -->
         <aside class="space-y-6 lg:col-span-1">
-          <!-- Presupuesto -->
-          <div>
-            <label class="font-medium block mb-1"
-              >Presupuesto máximo (USD)</label
-            >
-            <input
-              id="budgetRange"
-              type="range"
-              class="w-full text-sm"
-              min="0"
-              max="30000"
-              step="100"
-              value="30000"
-            />
-            <span id="budgetLabel" class="text-sm text-gray-600">$30,000</span>
+          <!-- Presupuesto: rango mínimo – máximo -->
+          <div class="space-y-2">
+            <div>
+              <label class="font-medium block mb-1"
+                >Presupuesto mínimo (USD)</label
+              >
+              <input
+                id="budgetMinRange"
+                type="range"
+                class="w-full text-sm"
+                min="0"
+                max="30000"
+                step="100"
+                value="0"
+              />
+              <span id="budgetMinLabel" class="text-sm text-gray-600">$0</span>
+            </div>
+            <div>
+              <label class="font-medium block mb-1"
+                >Presupuesto máximo (USD)</label
+              >
+              <input
+                id="budgetMaxRange"
+                type="range"
+                class="w-full text-sm"
+                min="0"
+                max="30000"
+                step="100"
+                value="30000"
+              />
+              <span id="budgetMaxLabel" class="text-sm text-gray-600"
+                >$30,000</span
+              >
+            </div>
           </div>
 
           <!-- Tamaño -->
@@ -143,47 +157,6 @@
             />
           </div>
 
-          <div>
-            <label class="font-medium block mb-1">Filtrar por valor</label>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
-                data-value="1000"
-              >
-                $1,000
-              </button>
-              <button
-                type="button"
-                class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
-                data-value="2000"
-              >
-                $2,000
-              </button>
-              <button
-                type="button"
-                class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
-                data-value="3000"
-              >
-                $3,000
-              </button>
-              <button
-                type="button"
-                class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
-                data-value="5000"
-              >
-                $5,000
-              </button>
-              <button
-                type="button"
-                class="quick-budget px-3 py-1 rounded-full border border-[#0050B3] text-[#0050B3] hover:bg-[#0050B3] hover:text-white font-medium transition-transform duration-200 ease-in-out"
-                data-value="10000"
-              >
-                $10,000
-              </button>
-            </div>
-          </div>
-
           <!-- Ubicación -->
           <div>
             <label for="locationSelect" class="font-medium block mb-1"
@@ -195,22 +168,6 @@
             >
               <option value="">— Ninguna —</option>
             </select>
-          </div>
-
-          <!-- Marca / Astillero -->
-          <div>
-            <label for="brandSelect" class="font-medium block mb-1"
-              >Marca / Astillero</label
-            >
-            <select
-              id="brandSelect"
-              class="w-full border rounded p-2 text-sm"
-              multiple
-              size="6"
-            ></select>
-            <p class="text-xs text-gray-500 mt-1">
-              Ctrl/Cmd‑clic para selección múltiple
-            </p>
           </div>
 
           <!-- Botones -->
