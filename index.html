@@ -33,186 +33,252 @@
         color: #d97706;
         font-weight: 600;
       }
+      /* duration chip */
+      .chip {
+        /* If Tailwind @apply is available: */
+        /* @apply px-3 py-1 rounded-full border border-gray-300 text-gray-700 text-sm cursor-pointer select-none transition; */
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+        border-radius: 9999px;
+        border: 1px solid #d1d5db;
+        color: #374151;
+        font-size: 0.875rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s, color 0.2s, border-color 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .chip input:checked ~ * {
+        /* fallback if using <span>… but we have label text nodes */
+      }
+      .chip-active {
+        /* @apply bg-sky-600 border-sky-600 text-white; */
+        background: #0284c7;
+        border-color: #0284c7;
+        color: #fff;
+      }
     </style>
   </head>
-  <body class="bg-white text-gray-900">
-    <!-- Header -->
-    <header class="p-6 bg-[#001f3f] text-white text-center">
-      <h1 class="text-3xl font-semibold tracking-wider">GYC Yacht Finder</h1>
+  <body class="min-h-screen flex flex-col bg-slate-50 text-gray-900">
+    <!-- Top‑bar -->
+    <header
+      class="flex items-center justify-between px-4 md:px-8 py-4 bg-gradient-to-r from-sky-900 to-sky-700 shadow-lg"
+    >
+      <div class="flex items-center gap-3">
+        <button
+          id="menuBtn"
+          class="md:hidden text-white focus:outline-none"
+          aria-label="Open filters"
+        >
+          <!-- Heroicon: menu -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-7 w-7"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+        <img
+          src="logo.png"
+          alt="GYC logo"
+          class="h-10 w-auto hidden md:block"
+        />
+        <h1 class="text-2xl md:text-3xl font-bold tracking-wide text-white">
+          Yacht&nbsp;Finder
+        </h1>
+      </div>
+      <span
+        id="resultCount"
+        class="hidden md:inline-flex items-center gap-1 text-white"
+      >
+        <!-- updated via JS -->
+      </span>
     </header>
 
-    <div class="max-w-screen-xl mx-auto w-full">
-      <!-- Contenedor principal: filtros + resultados -->
-      <main class="px-6 grid gap-6 lg:grid-cols-4">
-        <!-- Panel de filtros -->
-        <aside class="space-y-6 lg:col-span-1">
-          <!-- Presupuesto: rango mínimo – máximo -->
-          <div class="space-y-2">
-            <div>
-              <label class="font-medium block mb-1"
-                >Presupuesto mínimo (USD)</label
-              >
-              <input
-                id="budgetMinRange"
-                type="range"
-                class="w-full text-sm"
-                min="0"
-                max="30000"
-                step="100"
-                value="0"
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Side drawer / filters -->
+      <aside
+        id="filterPanel"
+        class="bg-white w-80 max-w-full p-6 space-y-8 overflow-y-auto shadow-xl fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 md:static md:translate-x-0 md:shadow-none"
+      >
+        <!-- Close (mobile) -->
+        <div class="flex items-center justify-between mb-4 md:hidden">
+          <h2 class="text-lg font-semibold">Filters</h2>
+          <button id="closeFilters" aria-label="Close filters">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
               />
-              <span id="budgetMinLabel" class="text-sm text-gray-600">$0</span>
-            </div>
-            <div>
-              <label class="font-medium block mb-1"
-                >Presupuesto máximo (USD)</label
-              >
-              <input
-                id="budgetMaxRange"
-                type="range"
-                class="w-full text-sm"
-                min="0"
-                max="30000"
-                step="100"
-                value="30000"
-              />
-              <span id="budgetMaxLabel" class="text-sm text-gray-600"
-                >$30,000</span
-              >
-            </div>
-          </div>
+            </svg>
+          </button>
+        </div>
 
-          <!-- Tamaño -->
-          <div>
-            <label class="font-medium block mb-1">Tamaño máximo (ft)</label>
+        <!-- Budget -->
+        <div class="space-y-3">
+          <h3 class="font-medium text-sm text-gray-600">Budget (USD)</h3>
+          <div class="flex gap-3">
             <input
-              id="sizeRange"
-              type="range"
-              class="w-full text-sm"
-              min="20"
-              max="200"
-              step="5"
-              value="200"
+              id="budgetMinRange"
+              type="number"
+              placeholder="Min"
+              class="w-full border rounded p-2 text-sm"
+              min="0"
+              step="100"
             />
-            <span id="sizeLabel" class="text-sm text-gray-600">200 ft</span>
+            <input
+              id="budgetMaxRange"
+              type="number"
+              placeholder="Max"
+              class="w-full border rounded p-2 text-sm"
+              min="0"
+              step="100"
+            />
           </div>
+        </div>
 
-          <!-- Tamaño mínimo -->
-          <div>
-            <label class="font-medium block mb-1">Tamaño mínimo (ft)</label>
+        <!-- Size -->
+        <div class="space-y-3">
+          <h3 class="font-medium text-sm text-gray-600">Size (ft)</h3>
+          <div class="flex gap-3">
             <input
               id="sizeMinRange"
-              type="range"
-              class="w-full text-sm"
+              type="number"
+              placeholder="Min"
+              class="w-full border rounded p-2 text-sm"
               min="20"
               max="200"
-              step="5"
-              value="20"
             />
-            <span id="sizeMinLabel" class="text-sm text-gray-600">20 ft</span>
-          </div>
-
-          <!-- Duración -->
-          <div>
-            <label class="font-medium block mb-1">Duración del charter</label>
-            <div class="flex gap-4 mt-1">
-              <label
-                ><input
-                  type="radio"
-                  name="duration"
-                  value="4"
-                  checked
-                  class="scale-125 mr-1"
-                />
-                4 h</label
-              >
-              <label
-                ><input
-                  type="radio"
-                  name="duration"
-                  value="6"
-                  class="scale-125 mr-1"
-                />
-                6 h</label
-              >
-              <label
-                ><input
-                  type="radio"
-                  name="duration"
-                  value="8"
-                  class="scale-125 mr-1"
-                />
-                8 h</label
-              >
-            </div>
-          </div>
-
-          <!-- Fecha -->
-          <div>
-            <label class="font-medium block mb-1">Fecha del charter</label>
             <input
-              id="dateInput"
-              type="date"
-              class="w-full border rounded p-3 text-lg"
+              id="sizeRange"
+              type="number"
+              placeholder="Max"
+              class="w-full border rounded p-2 text-sm"
+              min="20"
+              max="200"
             />
           </div>
+        </div>
 
-          <!-- Ubicación -->
-          <div>
-            <label for="locationSelect" class="font-medium block mb-1"
-              >Ubicación</label
+        <!-- Duration chips -->
+        <div class="space-y-2">
+          <h3 class="font-medium text-sm text-gray-600">Duration</h3>
+          <div class="flex gap-2">
+            <label class="chip"
+              ><input
+                hidden
+                type="radio"
+                name="duration"
+                value="4"
+                checked
+              />4&nbsp;h</label
             >
-            <select
-              id="locationSelect"
-              class="w-full border rounded p-2 text-sm"
+            <label class="chip"
+              ><input
+                hidden
+                type="radio"
+                name="duration"
+                value="6"
+              />6&nbsp;h</label
             >
-              <option value="">— Ninguna —</option>
-            </select>
+            <label class="chip"
+              ><input
+                hidden
+                type="radio"
+                name="duration"
+                value="8"
+              />8&nbsp;h</label
+            >
           </div>
+        </div>
 
-          <!-- Botones -->
-          <div class="flex gap-3 pt-2">
-            <button
-              id="applyBtn"
-              class="flex-1 bg-[#0050B3] text-white py-3 text-sm md:text-base rounded font-semibold"
-            >
-              Aplicar filtros
-            </button>
-            <button
-              id="copyBtn"
-              class="flex-1 border border-[#0050B3] text-[#0050B3] py-3 text-sm md:text-base rounded font-semibold"
-            >
-              Copiar tabla
-            </button>
-            <button
-              id="resetBtn"
-              class="flex-1 border py-3 text-sm md:text-base rounded font-medium"
-            >
-              Limpiar filtros
-            </button>
-            <button
-              id="draftBtn"
-              class="flex-1 bg-[#38bdf8] text-white py-3 text-sm md:text-base rounded font-semibold"
-            >
-              Redactar mensaje
-            </button>
-          </div>
-        </aside>
+        <!-- Date -->
+        <div class="space-y-2">
+          <h3 class="font-medium text-sm text-gray-600">Date</h3>
+          <input id="dateInput" type="date" class="w-full border rounded p-2" />
+        </div>
 
-        <!-- Resultados -->
-        <section class="lg:col-span-3 overflow-x-auto">
-          <table id="resultsTable" class="min-w-full text-sm whitespace-nowrap">
-            <thead
-              id="tableHead"
-              class="border-b sticky top-0 bg-gray-50"
-            ></thead>
-            <tbody id="tableBody"></tbody>
-          </table>
-        </section>
-      </main>
+        <!-- Location -->
+        <div class="space-y-2">
+          <h3 class="font-medium text-sm text-gray-600">Location</h3>
+          <select id="locationSelect" class="w-full border rounded p-2 text-sm">
+            <option value="">— Any —</option>
+          </select>
+        </div>
+
+        <!-- Actions -->
+        <div class="pt-2 grid grid-cols-2 gap-3">
+          <button
+            id="resetBtn"
+            class="col-span-2 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+          >
+            Reset
+          </button>
+          <button
+            id="copyBtn"
+            class="py-2 rounded border border-sky-700 text-sky-700 hover:bg-sky-50 transition"
+          >
+            Copy
+          </button>
+          <button
+            id="draftBtn"
+            class="py-2 rounded bg-sky-600 text-white hover:bg-sky-700 transition"
+          >
+            Draft
+          </button>
+        </div>
+      </aside>
+
+      <!-- Results -->
+      <section class="flex-1 overflow-auto">
+        <table id="resultsTable" class="min-w-full whitespace-nowrap text-sm">
+          <thead id="tableHead" class="sticky top-0 bg-white shadow"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </section>
     </div>
 
-    <!-- Lógica -->
+    <!-- Toast -->
+    <div
+      id="resultsToast"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur shadow px-4 py-2 rounded-full text-sm flex items-center gap-2 opacity-0 pointer-events-none transition"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-4 w-4 text-green-600"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M16.707 5.293a1
+      1 0 00-1.414 0L8 12.586l-3.293-3.293a1 1 0 00-1.414
+      1.414l4 4a1 1 0 001.414 0l8-8a1 1 0 000-1.414z"
+          clip-rule="evenodd"
+        />
+      </svg>
+      <span id="toastMsg">0 results</span>
+    </div>
+
+    <!-- Scripts -->
     <script src="app.js"></script>
   </body>
 </html>

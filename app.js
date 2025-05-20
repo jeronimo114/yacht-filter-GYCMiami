@@ -30,6 +30,18 @@ let availabilityMap = {}; // { Yacht_ID: [ {start, end}, ... ] }
    ========================================================================= */
 const $ = (sel) => document.querySelector(sel);
 
+/* Simple toast utility */
+function showToast(message) {
+  const toast = $("#resultsToast");
+  if (!toast) return;
+  $("#toastMsg").textContent = message;
+  toast.classList.remove("opacity-0", "pointer-events-none");
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => {
+    toast.classList.add("opacity-0", "pointer-events-none");
+  }, 2500);
+}
+
 const toNumber = (str) =>
   +String(str || "")
     .replace(/\$/g, "")
@@ -79,10 +91,8 @@ const fmtDateTime = (d) =>
 /* Compara tamaño + presupuesto + filtros select */
 function applyFilters() {
   /* Presupuesto min–max (si los sliders existen) */
-  const budgetMin = $("#budgetMinRange") ? +$("#budgetMinRange").value : 0;
-  const budgetMax = $("#budgetMaxRange")
-    ? +$("#budgetMaxRange").value
-    : +$("#budgetRange")?.value || Infinity;
+  const budgetMin = +($("#budgetMinRange")?.value || 0);
+  const budgetMax = +($("#budgetMaxRange")?.value || Infinity);
 
   const sizeMin = +$("#sizeMinRange").value;
   const sizeMax = +$("#sizeRange").value;
@@ -198,6 +208,14 @@ function applyFilters() {
   });
 
   console.log(`[summary] ${filtered.length} yachts after applying filters.`);
+
+  /* UI feedback */
+  const countEl = $("#resultCount");
+  if (countEl)
+    countEl.textContent = `${filtered.length} result${
+      filtered.length !== 1 ? "s" : ""
+    }`;
+  showToast(`${filtered.length} result${filtered.length !== 1 ? "s" : ""}`);
 
   renderTable();
 }
@@ -392,52 +410,66 @@ function populateFilters() {
 /* =========================================================================
    EVENTOS
    ========================================================================= */
+/* ───────────────────────── drawer (mobile filters) ───────────────────────── */
+const menuBtn = document.getElementById("menuBtn");
+const drawer = document.getElementById("filterPanel");
+const closeBtn = document.getElementById("closeFilters");
+
+const toggleDrawer = (show) => {
+  if (!drawer) return;
+  drawer.classList.toggle("-translate-x-full", !show);
+};
+
+menuBtn?.addEventListener("click", () => toggleDrawer(true));
+closeBtn?.addEventListener("click", () => toggleDrawer(false));
+
+drawer?.addEventListener("click", (e) => {
+  if (e.target === drawer) toggleDrawer(false);
+});
+
 /* Rango de presupuesto (min‑max) */
 const minRangeEl = $("#budgetMinRange");
 const maxRangeEl = $("#budgetMaxRange");
 
-if (minRangeEl) {
-  minRangeEl.addEventListener("input", (e) => {
-    $("#budgetMinLabel").textContent = `$${(+e.target.value).toLocaleString(
-      "en-US"
-    )}`;
-  });
-}
-if (maxRangeEl) {
-  maxRangeEl.addEventListener("input", (e) => {
-    $("#budgetMaxLabel").textContent = `$${(+e.target.value).toLocaleString(
-      "en-US"
-    )}`;
-  });
-}
-$("#sizeRange").addEventListener("input", (e) => {
-  $("#sizeLabel").textContent = `${e.target.value} ft`;
-});
-$("#sizeMinRange").addEventListener("input", (e) => {
-  $("#sizeMinLabel").textContent = `${e.target.value} ft`;
-});
+if (minRangeEl)
+  minRangeEl.addEventListener("input", _.debounce(applyFilters, 150));
+if (maxRangeEl)
+  maxRangeEl.addEventListener("input", _.debounce(applyFilters, 150));
+$("#sizeRange")?.addEventListener("input", _.debounce(applyFilters, 150));
+$("#sizeMinRange")?.addEventListener("input", _.debounce(applyFilters, 150));
 
-$("#applyBtn").addEventListener("click", applyFilters);
-$("#copyBtn").addEventListener("click", copyToClipboard);
-$("#draftBtn").addEventListener("click", draftMessage);
+/* Duration chip styling */
+document.querySelectorAll(".chip input[name='duration']").forEach((radio) => {
+  radio.addEventListener("change", () => {
+    document
+      .querySelectorAll(".chip")
+      .forEach((c) => c.classList.remove("chip-active"));
+    radio.parentElement.classList.add("chip-active");
+    applyFilters();
+  });
+});
+/* Activate default on load */
+document
+  .querySelector(".chip input:checked")
+  ?.parentElement.classList.add("chip-active");
+
+$("#copyBtn")?.addEventListener("click", copyToClipboard);
+$("#draftBtn")?.addEventListener("click", draftMessage);
 
 $("#dateInput").addEventListener("change", applyFilters);
 
 $("#resetBtn").addEventListener("click", () => {
-  /* Presupuesto sliders */
-  if (minRangeEl) {
-    minRangeEl.value = 0;
-    $("#budgetMinLabel").textContent = "$0";
-  }
-  if (maxRangeEl) {
-    maxRangeEl.value = 30000;
-    $("#budgetMaxLabel").textContent = "$30,000";
-  }
+  if (minRangeEl) minRangeEl.value = "";
+  if (maxRangeEl) maxRangeEl.value = "";
   $("#sizeRange").value = 200;
-  $("#sizeLabel").textContent = "200 ft";
   $("#sizeMinRange").value = 20;
-  $("#sizeMinLabel").textContent = "20 ft";
-  document.querySelector('input[name="duration"][value="4"]').checked = true;
+  document.querySelector(".chip input[value='4']").checked = true;
+  document
+    .querySelectorAll(".chip")
+    .forEach((c) => c.classList.remove("chip-active"));
+  document
+    .querySelector(".chip input[value='4']")
+    .parentElement.classList.add("chip-active");
   $("#locationSelect").value = "";
   $("#dateInput").value = "";
   applyFilters();
